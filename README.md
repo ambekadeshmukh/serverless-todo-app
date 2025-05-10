@@ -8,8 +8,6 @@
 
 > A modern serverless implementation of a Todo application using AWS services
 
-![alt text](serverlesstodo.png)
-
 ## 📋 Project Overview
 
 This project demonstrates a complete serverless architecture for a Todo application using AWS services. Instead of using traditional Kubernetes-based infrastructure, this project leverages AWS's serverless offerings to create a scalable, maintainable application with minimal operational overhead and pay-per-use cost model.
@@ -137,7 +135,7 @@ Each pipeline is triggered automatically when code is pushed to the respective d
 
 ## 📈 Architecture Diagram
 
-![Serverless Architecture Diagram](./architecture.png)
+![alt text](serverlesstodo.png)
 
 The architecture diagram shows how the components interact:
 
