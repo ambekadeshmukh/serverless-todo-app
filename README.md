@@ -5,7 +5,6 @@
 [![AWS CDK](https://img.shields.io/badge/Infrastructure-AWS%20CDK-yellow.svg)](https://aws.amazon.com/cdk/)
 [![Jenkins](https://img.shields.io/badge/CI%2FCD-Jenkins-red.svg)](https://jenkins.io/)
 [![DynamoDB](https://img.shields.io/badge/Database-DynamoDB-blue.svg)](https://aws.amazon.com/dynamodb/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 
 > A modern serverless implementation of a Todo application using AWS services
 
