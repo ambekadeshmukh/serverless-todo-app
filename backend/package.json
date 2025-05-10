@@ -1,0 +1,28 @@
+{
+  "name": "serverless-todo-app-backend",
+  "version": "1.0.0",
+  "description": "Backend Lambda functions for Serverless Todo App",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "lint": "eslint ."
+  },
+  "keywords": [
+    "serverless",
+    "aws",
+    "lambda",
+    "dynamodb",
+    "todo"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "aws-sdk": "^2.1409.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.44.0",
+    "jest": "^29.6.1",
+    "aws-sdk-mock": "^5.8.0"
+  }
+}

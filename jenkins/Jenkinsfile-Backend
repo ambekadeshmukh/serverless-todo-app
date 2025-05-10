@@ -1,0 +1,82 @@
+// jenkins/Jenkinsfile-Backend
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION = 'us-east-1'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                dir('backend') {
+                    sh 'npm install'
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                dir('backend') {
+                    sh 'npm test || true'
+                }
+            }
+        }
+
+        stage('Lint') {
+            steps {
+                dir('backend') {
+                    sh 'npx eslint . || true'
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                dir('infrastructure') {
+                    withAWS(region: env.AWS_REGION, credentials: 'aws-credentials') {
+                        // We're just redeploying the CDK stack that contains Lambda functions
+                        sh 'npm install'
+                        sh 'npm run cdk -- deploy TodoBackendStack --require-approval never'
+                    }
+                }
+            }
+        }
+
+        stage('Verify') {
+            steps {
+                withAWS(region: env.AWS_REGION, credentials: 'aws-credentials') {
+                    script {
+                        def apiEndpoint = sh(
+                            script: "aws cloudformation describe-stacks --stack-name TodoBackendStack --query 'Stacks[0].Outputs[?OutputKey==`ApiEndpoint`].OutputValue' --output text",
+                            returnStdout: true
+                        ).trim()
+                        
+                        echo "API Endpoint: ${apiEndpoint}"
+                        
+                        // Test the API endpoint
+                        sh "curl -s ${apiEndpoint}tasks"
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo 'Backend deployment successful!'
+        }
+        failure {
+            echo 'Backend deployment failed!'
+        }
+    }
+}

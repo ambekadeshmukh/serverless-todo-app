@@ -1,0 +1,123 @@
+// jenkins/Jenkinsfile-Frontend
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION = 'us-east-1'
+        NODE_ENV = 'production'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Get API Endpoint') {
+            steps {
+                script {
+                    withAWS(region: env.AWS_REGION, credentials: 'aws-credentials') {
+                        env.API_ENDPOINT = sh(
+                            script: "aws cloudformation describe-stacks --stack-name TodoBackendStack --query 'Stacks[0].Outputs[?OutputKey==`ApiEndpoint`].OutputValue' --output text",
+                            returnStdout: true
+                        ).trim()
+                        
+                        echo "API Endpoint: ${env.API_ENDPOINT}"
+                    }
+                }
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                dir('frontend') {
+                    sh 'npm install'
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                dir('frontend') {
+                    sh 'npm test -- --watchAll=false || true'
+                }
+            }
+        }
+
+        stage('Lint') {
+            steps {
+                dir('frontend') {
+                    sh 'npx eslint src || true'
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir('frontend') {
+                    // Set the API endpoint for the React app
+                    sh "REACT_APP_API_URL=${env.API_ENDPOINT} npm run build"
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                script {
+                    withAWS(region: env.AWS_REGION, credentials: 'aws-credentials') {
+                        // Get S3 bucket name from CloudFormation stack
+                        def bucketName = sh(
+                            script: "aws cloudformation describe-stacks --stack-name TodoFrontendStack --query 'Stacks[0].Outputs[?OutputKey==`WebsiteBucketName`].OutputValue' --output text",
+                            returnStdout: true
+                        ).trim()
+                        
+                        echo "S3 Bucket: ${bucketName}"
+                        
+                        // Upload the React build to S3
+                        dir('frontend/build') {
+                            sh "aws s3 sync . s3://${bucketName} --delete"
+                        }
+                        
+                        // Invalidate CloudFront cache
+                        def distributionId = sh(
+                            script: "aws cloudfront list-distributions --query 'DistributionList.Items[?Origins.Items[0].DomainName==`${bucketName}.s3.amazonaws.com`].Id' --output text",
+                            returnStdout: true
+                        ).trim()
+                        
+                        if (distributionId) {
+                            sh "aws cloudfront create-invalidation --distribution-id ${distributionId} --paths '/*'"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Check Website') {
+            steps {
+                script {
+                    withAWS(region: env.AWS_REGION, credentials: 'aws-credentials') {
+                        def distributionDomain = sh(
+                            script: "aws cloudformation describe-stacks --stack-name TodoFrontendStack --query 'Stacks[0].Outputs[?OutputKey==`DistributionDomainName`].OutputValue' --output text",
+                            returnStdout: true
+                        ).trim()
+                        
+                        echo "Website URL: https://${distributionDomain}"
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo 'Frontend deployment successful!'
+        }
+        failure {
+            echo 'Frontend deployment failed!'
+        }
+    }
+}

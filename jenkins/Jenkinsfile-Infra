@@ -1,0 +1,73 @@
+// jenkins/Jenkinsfile-Infra
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION = 'us-east-1'
+        STACK_NAME = 'ServerlessTodoApp'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                dir('infrastructure') {
+                    sh 'npm install'
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir('infrastructure') {
+                    sh 'npm run build'
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                dir('infrastructure') {
+                    sh 'npm test'
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                dir('infrastructure') {
+                    withAWS(region: env.AWS_REGION, credentials: 'aws-credentials') {
+                        sh 'npm run cdk -- deploy --all --require-approval never'
+                    }
+                }
+            }
+        }
+
+        stage('Outputs') {
+            steps {
+                dir('infrastructure') {
+                    withAWS(region: env.AWS_REGION, credentials: 'aws-credentials') {
+                        sh 'npm run cdk -- list-exports'
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo 'Infrastructure deployment successful!'
+        }
+        failure {
+            echo 'Infrastructure deployment failed!'
+        }
+    }
+}
